@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: HubSpot Integration API
+  description: Essa aplicação tem como objetivo a integração com o serviço do Hubspot, gerando a criação de um contato junto com o CRM da plataforma. Esses endpoints tendem a documentar as requisições que são feitas pela aplicação, com sua ordem sendo exatamente a retratada abaixo por requisição.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Servidor local de desenvolvimento
+paths:
+  /hubspot/mappings:
+    post:
+      tags:
+        - Parâmetros de entrada
+      summary: Configura os parâmetros de conexão com o HubSpot
+      description: Define as credenciais e endpoints necessários para a integração
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubspotModel'
+      responses:
+        '200':
+          description: Configuração criada com sucesso
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Config created!!!"
+
+  /hubspot/authorize:
+    get:
+      tags:
+        - OAuth hubspot
+      summary: Inicia o fluxo de autorização OAuth
+      description: Redireciona para a página de autorização do HubSpot
+      responses:
+        '302':
+          description: Redirecionamento para o HubSpot
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "https://app.hubspot.com/oauth/9725197/authorize?client_id=1eb4e6fe-cf3e-4e67-ad03-8dd5013117ca&redirect_uri=http://localhost:8080/hubspot/callback&scope=oauth&state=unathourized"
+
+  /hubspot/callback:
+    get:
+      tags:
+        - Código de callback
+      summary: Callback para receber o código de autorização
+      description: Endpoint chamado pelo HubSpot após autorização do usuário
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Código de autorização fornecido pelo HubSpot
+      responses:
+        '200':
+          description: Autenticação realizada com sucesso
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Authentication OK."
+
+  /hubspot/contacts:
+    post:
+      tags:
+        - Contatos
+      summary: Cria um novo contato no HubSpot
+      description: Cadastra um contato com as propriedades fornecidas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactModel'
+      responses:
+        '200':
+          description: Contato criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+        '302':
+          description: Redirecionamento para autorização (quando token expirado)
+          headers:
+            Location:
+              schema:
+                type: string
+        '403':
+          description: Token de acesso inválido ou expirado
+
+  /hubspot/webhook:
+    post:
+      tags:
+        - Webhook
+      summary: Endpoint para receber webhooks do HubSpot
+      description: Recebe notificações de eventos do HubSpot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+              example: "{\"event\":\"contact.creation\",\"objectId\":12345}"
+      responses:
+        '200':
+          description: Webhook recebido com sucesso
+
+components:
+  schemas:
+    HubspotModel:
+      type: object
+      required:
+        - clientId
+        - redirectUri
+        - clientSecret
+        - urlOauthv1
+        - appId
+      properties:
+        clientId:
+          type: string
+          description: Client ID da aplicação no HubSpot
+          example: "1eb4e6fe-cf3e-4e67-ad03-8dd5013117ca"
+        redirectUri:
+          type: string
+          description: URL de callback para autorização
+          example: "http://localhost:8080/hubspot/callback"
+        scopes:
+          type: string
+          description: Escopos de acesso necessários
+          example: "oauth crm.objects.contacts.read crm.objects.contacts.write"
+        state:
+          type: string
+          description: Estado para prevenção de CSRF
+          example: "unathourized"
+        oauthUrlConnection:
+          type: string
+          description: URL base para conexão OAuth
+          example: "https://app.hubspot.com/oauth/"
+        clientSecret:
+          type: string
+          description: Client Secret da aplicação no HubSpot
+          example: "1bd2d4c1-671e-4170-8f89-dd2fb7f68fb9"
+        urlOauthv1:
+          type: string
+          description: Endpoint para obtenção de tokens OAuth
+          example: "https://api.hubapi.com/oauth/v1/token"
+        appId:
+          type: string
+          description: ID da aplicação no HubSpot
+          example: "9725197"
+        authorizeEndpoint:
+          type: string
+          description: Endpoint para autorização
+          example: "/authorize"
+        urlHubApi:
+          type: string
+          description: URL base da API HubSpot
+          example: "https://api.hubapi.com"
+        contactsEndpoint:
+          type: string
+          description: Endpoint para manipulação de contatos
+          example: "/crm/v3/objects/contacts"
+
+    ContactModel:
+      type: object
+      properties:
+        associations:
+          type: array
+          items:
+            type: object
+            properties:
+              types:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    associationCategory:
+                      type: string
+                      example: "HUBSPOT_DEFINED"
+                    associationTypeId:
+                      type: integer
+                      example: 1
+              to:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "31296120497"
+        objectWriteTraceId:
+          type: string
+          example: "trace-id-589441"
+        properties:
+          type: object
+          properties:
+            email:
+              type: string
+              example: "enzokauarosantos16@gmail.com"
+            lastname:
+              type: string
+              example: "testestestestes"
+            firstname:
+              type: string
+              example: "testesteste"
+          required:
+            - email
